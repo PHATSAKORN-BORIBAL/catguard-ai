@@ -1,0 +1,9 @@
+{
+  "name": "catguard-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototype reference logic for independent door alerts and cat-near-exit warnings",
+  "type": "module",
+  "scripts": { "test": "node --test", "demo": "node examples/simulate.js" },
+  "engines": { "node": ">=22" }
+}

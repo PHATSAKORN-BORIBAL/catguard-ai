@@ -1,0 +1,15 @@
+CatGuard AI reference prototype validation
+Date: 2026-11-25
+Runtime: Node.js v24.22.3
+Command: node --test
+Tests: 21
+Passed: 21
+Failed: 0
+Cancelled: 0
+Skipped: 0
+Command: node examples/simulate.js
+Result: completed successfully; simulation banner and expected door/warning events printed.
+
+Scope: locally executed synthetic reference-logic tests only.
+Not tested: real detector, camera, door sensor, Telegram delivery, CiRA runtime integration,
+directional tracking, production deployment, or GitHub-hosted CI.
