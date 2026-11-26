@@ -2,113 +2,57 @@
 
 **Smart Cat Monitoring & Door Alert System**
 
-`PROTOTYPE` · `SIMULATED TESTS` · `CiRA CORE CONCEPT` · `ZERO RUNTIME DEPENDENCIES`
+A computer engineering course project (CPE447) combining computer vision with rule-based decision-making to help monitor pets near a doorway.
 
-CatGuard AI explores how independent door sensing and camera-based cat detection can help an owner notice an open exit and respond when a cat approaches it. This repository provides executable JavaScript reference logic, architecture diagrams, and a reproducible simulation test suite.
+![Architecture](docs/system-diagram.svg)
 
-> **Evidence boundary:** This is a newly authored reference implementation informed by the supplied project presentation and CiRA CORE screenshot. It is not an exported CiRA project or a validated, deployed monitoring system. No measured detection accuracy, notification latency, or escape-prevention performance is claimed.
+## Overview
 
-## The core behavior
+CatGuard AI uses object detection results from CiRA CORE as inputs to a JavaScript decision layer. The controller evaluates door state, pet proximity and human presence, then prepares an alert payload with a cooldown and daily notification statistics. The original system architecture describes local image capture and Telegram notification as downstream components.
 
-1. **Every observed door opening generates its own alert**, even without a camera result.
-2. **A cat near an open exit generates a warning**, in addition to the door alert.
-3. **Critical requires validated directional tracking across the doorway.** That capability is not implemented here; this prototype never emits Critical.
+This repository package is a **privacy-preserving public edition**, not a complete copy of the original deployment. The included executable example uses synthetic bounding boxes and does not access a camera, write snapshots or send messages.
 
-No detection does not mean no cat is present. A notification system cannot physically prevent an escape.
+## Project highlights
 
-## Run the prototype
+| Component | Description |
+|---|---|
+| Dataset | The project presentation reports 200 source images, with two annotation sets: door/two pet identities/person, and left/right door leaves. |
+| Detection | CiRA CORE Deep Detect / cascaded detection as described in the project presentation. |
+| Decision layer | JavaScript, confidence filtering, relative door-gap thresholds and rectangular proximity checks. |
+| Alert control | Human-presence suppression, 15-second cooldown and daily counters. |
+| Output | Alert payload prepared for a downstream notification component. |
 
-Install Node.js 22 or later, then run from the repository folder:
+## Public resources
+
+- [Public presentation](docs/CatGuard_AI_Public_Presentation.pdf) — newly authored summary, no private screenshots or original media.
+- [System architecture](docs/system-diagram.svg) — simplified, redrawn from the project architecture.
+- [Logic reference](docs/logic.md) — parameters, assumptions and limitations.
+- [Example controller](src/controller.js) — standalone demonstration, not a drop-in CiRA CORE node.
+
+## Run the local demonstration
+
+Requires Node.js (no external packages or network connections).
 
 ```sh
-npm test
-npm run demo
+node src/demo.js
+node --test tests/controller.test.js
 ```
 
-There are no packages to install and no credentials to configure. The demo prints **SIMULATION ONLY** and generates local console output. It does not contact Telegram, open a camera, or read a door sensor.
+The demo uses invented bounding boxes and generic labels (`pet_a`, `pet_b`). No credentials or personal information are required. Tests cover the standalone example only, not the original trained model or deployment.
 
-## Architecture
+## Limitations
 
-```mermaid
-flowchart LR
-  DS[Door sensor] --> DP[Debounced door state]
-  DP --> DE[Independent door-open event]
-  CAM[Camera] --> CIRA[CiRA CORE detection]
-  CIRA --> Z[Cat position / safety zone]
-  DP --> R[Risk assessment]
-  Z --> R
-  DE --> A[Alert dispatcher]
-  R --> A
-  A --> N[Owner notification]
-  A --> L[Event log]
-  R --> D[Monitoring dashboard]
-  T[Validated directional tracking - future] -.-> R
-```
+- Bounding boxes in the example use pixel coordinates with top-left origin (`x`, `y`, `w`, `h`). The actual CiRA CORE payload format must be confirmed before integration.
+- Door state is a heuristic, not a physical sensor measurement. The original logic assumes closed when only partial door evidence is available; this reference example instead reports unknown.
+- Proximity is a rectangular image-space approximation, not a physical distance or a pentagon test.
+- Human presence is a suppression rule, not proof of supervision. Missed detections can cause missed or inappropriate alerts.
+- Cooldown limits repeat notifications; daily counts are alert counts, not unique escape attempts.
+- No independently verified model metrics, live camera performance or notification delivery guarantees are claimed here.
 
-This is the target architecture. Only the reference risk/event logic and console simulation are implemented in this repository. Sensor, CiRA, dashboard, logging storage and notification adapters remain integration work. The door branch must run even when camera processing is unavailable.
+## Privacy and release policy
 
-## Decision table
+The original presentation, recorded demonstration, training images, model files, camera settings, Telegram credentials and personal identifiers are deliberately excluded. The public presentation is a new summary rather than a redaction of the original PDF. No original screenshots are included.
 
-| Door | Camera evidence | Current risk | New alerts |
-|---|---|---|---|
-| Opens | Missing, stale, no cat, or cat far away | Information | Door Open |
-| Opens | Fresh, qualifying cat near exit | Warning | Door Open **and** Cat Near Exit |
-| Remains open | Cat enters safety zone | Warning | Cat Near Exit |
-| Closed | Any | None | None |
-| Unknown | Any | Unknown | None; surface sensor fault in integration |
-| Open | Claimed crossing without validated tracking | At most Warning | Never Critical |
+Keep local configuration and raw media outside version control. Never commit real credentials, private stream addresses, chat identifiers, home footage or unapproved personal information. Review the complete staged diff before pushing.
 
-Repeated samples of the same condition do not duplicate alerts. Closing and reopening the door creates a fresh alert immediately, with no global cooldown. Startup or reconnection into an open state also emits a baseline door alert.
-
-## Reference API
-
-```js
-import { createAlertEngine } from './src/alert-engine.js';
-
-const engine = createAlertEngine();
-const result = engine.process({
-  timestampMs: 1000,
-  door: 'open',
-  cat: {
-    detected: true,
-    nearExit: true,
-    confidence: 0.92,
-    observedAtMs: 1000
-  }
-});
-console.log(result.alerts); // Independent door event and cat warning
-```
-
-Confidence uses a **0–1** scale. The default threshold of `0.8` and maximum detection age of `2000 ms` are reference design choices, not calibrated findings from the source material. `nearExit` must eventually be supplied by a calibrated safety-zone adapter; a detected cat alone is insufficient. See [integration contract](docs/integration.md).
-
-## What is verified?
-
-| Component | Status |
-|---|---|
-| Independent door-open events | Implemented and tested with synthetic inputs |
-| Cat-near-exit warning | Implemented and tested with synthetic inputs |
-| Duplicate-state suppression / reopening | Implemented and tested with synthetic inputs |
-| Stale or malformed camera input handling | Implemented and tested with synthetic inputs |
-| CiRA CORE camera and detection workflow | Visible in supplied screenshot; not executed here |
-| Sensor hardware and Telegram delivery | Not validated here |
-| Directional tracking / Critical | Future work; intentionally unavailable |
-| Accuracy, latency, false-alarm rate | No measured results available |
-
-## Explore the project
-
-- [Architecture and data flow](docs/architecture.md)
-- [Input contract and integration boundaries](docs/integration.md)
-- [Evaluation plan and simulation coverage](docs/testing.md)
-- [Source review and privacy decisions](docs/source-review.md)
-- [Upload to GitHub — English / ภาษาไทย](docs/publishing.md)
-- [Security and data handling](SECURITY.md)
-
-## Roadmap
-
-- Connect and validate a debounced physical door sensor independently of camera inference.
-- Calibrate a doorway safety zone and evaluate detection under low light and occlusion.
-- Add a durable notification queue with retries, delivery status and redacted logs.
-- Validate directional tracking on labeled doorway sequences before enabling Critical.
-- Measure detection quality and end-to-end latency on real hardware.
-
-Original presentation and screenshot are excluded from the publishable package. There are no student identifiers, camera URLs, real event imagery or credentials in the repository. No license is assigned to third-party source assets; confirm ownership before choosing a repository license.
+See [publication checklist](docs/publish.md) before updating an existing repository. Public sharing does not grant a license to redistribute third-party software, models or group materials; obtain permission before publishing them.

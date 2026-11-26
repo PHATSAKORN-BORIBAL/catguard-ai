@@ -1,0 +1,18 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {createController} = require('../src/controller');
+const t = Date.UTC(2025,0,1);
+const box=(name,x,y,w,h,confidence=.95)=>({name,x,y,w,h,confidence});
+const open=[box('door',200,100,600,400),box('door_left',200,100,200,400),box('door_right',600,100,200,400)];
+const closed=[box('door',200,100,400,400),box('door_left',200,100,180,400),box('door_right',380,100,180,400)];
+const pet=box('pet_a',420,400,60,60);
+const run=(evaluate,objects,now=t)=>evaluate({width:1000,height:600,objects},now);
+test('open door and pet emits alert',()=>assert.equal(run(createController(),[...open,pet]).alertType,'PET_NEAR_OPEN_DOOR'));
+test('closed door and pet emits notice',()=>assert.equal(run(createController(),[...closed,pet]).alertType,'PET_NEAR_CLOSED_DOOR'));
+test('person suppresses alert',()=>assert.equal(run(createController(),[...open,pet,box('person',300,200,80,200)]).sendAlert,false));
+test('cooldown and repeated alert',()=>{const e=createController();assert.equal(run(e,[...open,pet]).stats.count,1);assert.equal(run(e,[...open,pet],t+14999).sendAlert,false);assert.equal(run(e,[...open,pet],t+15000).stats.count,2);});
+test('low confidence and far pet rejected',()=>{assert.equal(run(createController(),[...open,{...pet,confidence:.49}]).sendAlert,false);assert.equal(run(createController(),[...open,{...pet,x:950}]).sendAlert,false);});
+test('missing leaf reports unknown',()=>{const r=run(createController(),[open[0],open[1],pet]);assert.equal(r.doorState,'unknown');assert.equal(r.sendAlert,false);});
+test('open only disabled by default',()=>assert.equal(run(createController(),open).sendAlert,false));
+test('new UTC day resets count',()=>{const e=createController();run(e,[...open,pet]);assert.equal(run(e,[...open,pet],t+86400000).stats.count,1);});
